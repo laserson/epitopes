@@ -53,7 +53,7 @@ if __name__ == '__main__':
     if options.output == None:
         outhandle = sys.stdout
     else:
-        outhandle = open(options.output,'r')
+        outhandle = open(options.output,'w')
     
     verbose = options.verbose
     
