@@ -5,9 +5,7 @@ import numpy as np
 np.random.seed()
 
 def substitute(seq,pos,sub):
-    mutseq = list(seq)
-    mutseq[pos] = sub
-    return ''.join(mutseq)
+    return seq[:pos] + sub + seq[pos+1:]
 
 def choose(l):
     return l[np.random.randint(len(l))]
@@ -23,19 +21,33 @@ class RandomMutant(object):
     
     def __call__(self):
         mutant = self.seq
-        num_mutations = np.random.poisson(lam)
-        positions = np.random.randint(0,seqlen,num_mutations)
+        num_mutations = np.random.poisson(self.lam)
+        positions = np.random.randint(0,self.seqlen,num_mutations)
         
         for position in positions:
             mutant = substitute( mutant, position, choose('ACGT') )
         
         return mutant
 
+def main(inhandle,offsethandle,outhandle,num_mutants,verbose=False):
+    from Bio import SeqIO
+    
+    strip_biopython = lambda seqrec: (seqrec.description,seqrec.seq.tostring())
+    
+    for seqrec in SeqIO.parse(inhandle,'fasta'):
+        name,refseq = strip_biopython(seqrec)
+        rand_mut = RandomMutant(refseq,rate=1.)
+        for i in xrange(num_mutants):
+            if verbose:
+                if i%10000==0: print i
+            outhandle.write( '%s|%i ' % (name,i) )
+            offsethandle.write( '%s|%i %i\n' % (name,i,outhandle.tell()) )
+            outhandle.write( rand_mut() )
+            outhandle.write('\n')
+
 if __name__ == '__main__':
     import sys
     import optparse
-    
-    from Bio import SeqIO
     
     option_parser = optparse.OptionParser()
     option_parser.add_option('-i','--input')
@@ -55,18 +67,6 @@ if __name__ == '__main__':
     else:
         outhandle = open(options.output,'w')
     
-    verbose = options.verbose
-    
-    strip_biopython = lambda seqrec: (seqrec.description,seqrec.seq.tostring())
-    
     offsethandle = open(options.offsetfile,'w')
     
-    for seqrec in SeqIO.parse(inhandle,'fasta'):
-        name,refseq = strip_biopython(seqrec)
-        rand_mut = RandomMutant(refseq,rate=1.)
-        for i in xrange(options.num_mutants):
-            if verbose: if i%10000==0: print i
-            outhandle.write( '%s %i ' % (name,i) )
-            offsethandle.write( '%s %i %i\n' % (name,i,outhandle.tell()) )
-            outhandle.write( rand_mut() )
-            outhandle.write('\n')
+    main(inhandle,offsethandle,outhandle,options.num_mutants,options.verbose)
