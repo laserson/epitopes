@@ -2,3 +2,4 @@ experiments/
 data/
 .DS_Store
 *.pyc
+doc/
